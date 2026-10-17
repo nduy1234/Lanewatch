@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lanewatch</title>
+<meta name="description" content="Freight-fraud checker for brokers that learns from every confirmed call.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M9 23 16 7l7 16' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+  :root {
+    --bg: #f5f6f4;
+    --surface: #ffffff;
+    --surface-2: #eef0ec;
+    --text: #17201c;
+    --muted: #5b6862;
+    --border: #d8ddd8;
+    --accent: #0f766e;
+    --accent-ink: #ffffff;
+    --danger: #b42318;
+    --danger-bg: #fdecea;
+    --safe: #146c43;
+    --safe-bg: #e6f4ec;
+    --warn: #9a6700;
+    --focus: #2563eb;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1412;
+      --surface: #171d1a;
+      --surface-2: #1f2723;
+      --text: #e7ece9;
+      --muted: #98a59f;
+      --border: #2c3631;
+      --accent: #2dd4bf;
+      --accent-ink: #062320;
+      --danger: #ff7b6e;
+      --danger-bg: #3a1714;
+      --safe: #5fd39a;
+      --safe-bg: #12301f;
+      --warn: #e3b341;
+      --focus: #7aa2ff;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+  header {
+    max-width: 1180px; margin: 0 auto; padding: 20px 16px 8px;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  }
+  .logo { font-size: 22px; font-weight: 750; letter-spacing: -.02em; margin: 0; }
+  .logo span { color: var(--accent); }
+  .tag { color: var(--muted); margin: 0; }
+  main {
+    max-width: 1180px; margin: 0 auto; padding: 8px 16px 40px;
+    display: grid; gap: 16px;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 650; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 520px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .full { grid-column: 1 / -1; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, select, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px;
+  }
+  textarea { min-height: 112px; resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; border-radius: 9px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px; padding: 9px 14px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  }
+  button:hover { filter: brightness(.97); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  button.fraud { background: var(--danger); color: #fff; border-color: transparent; }
+  button.legit { background: var(--safe); color: #fff; border-color: transparent; }
+  @media (prefers-color-scheme: dark) {
+    button.fraud, button.legit { color: #0f1412; }
+    button:hover { filter: brightness(1.1); }
+  }
+  button.link { background: none; border: none; padding: 4px 0; color: var(--muted); text-decoration: underline; font-weight: 500; }
+
+  .verdict {
+    border-radius: 14px; padding: 20px; text-align: center; border: 2px solid var(--border);
+    background: var(--surface-2); transition: background .25s, border-color .25s;
+  }
+  .verdict.hold { background: var(--danger-bg); border-color: var(--danger); }
+  .verdict.safe { background: var(--safe-bg); border-color: var(--safe); }
+  .pct { font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .verdict.hold .pct, .verdict.hold .call { color: var(--danger); }
+  .verdict.safe .pct, .verdict.safe .call { color: var(--safe); }
+  .call { font-size: 20px; font-weight: 750; margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .delta { font-weight: 700; }
+  .reasons { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; }
+  .reasons li {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+    padding: 8px 10px; border-radius: 9px; background: var(--surface-2); font-size: 14px;
+  }
+  .reasons .w { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .bar { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--danger); }
+  .reasons li.net { outline: 2px solid var(--danger); }
+  .none { color: var(--muted); font-size: 14px; padding: 6px 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .actions button { flex: 1 1 140px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .stat { background: var(--surface-2); border-radius: 10px; padding: 10px; }
+  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .weights { display: grid; gap: 5px; margin-top: 14px; }
+  .wrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 44px; gap: 8px; align-items: center; font-size: 13px; }
+  @media (max-width: 420px) { .wrow { grid-template-columns: 110px minmax(0, 1fr) 40px; } }
+  .wrow .track { height: 8px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+  .wrow .track i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .wrow.bump .track i { background: var(--warn); }
+  .wrow .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); overflow-wrap: anywhere; }
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 300px; overflow: auto; }
+  .log li { font-size: 13px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; }
+  .log li.f { border-left-color: var(--danger); }
+  .log li.l { border-left-color: var(--safe); }
+  .log time { display: block; color: var(--muted); font-size: 11px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .row h2 { margin: 0; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0;
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px;
+    transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100% - 32px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="logo">Lane<span>watch</span></h1>
+  <p class="tag">Freight-fraud checker that learns from every confirmed call.</p>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="h-call">
+    <h2 id="h-call">Carrier call</h2>
+    <div class="presets" role="group" aria-label="Demo presets">
+      <button type="button" data-preset="legit">1 · Legit carrier</button>
+      <button type="button" data-preset="scam">2 · Subtle scam</button>
+      <button type="button" data-preset="repeat">3 · Repeat scammer</button>
+    </div>
+    <form id="form" class="grid" autocomplete="off" novalidate>
+      <div>
+        <label for="mc">MC number</label>
+        <input id="mc" name="mc" inputmode="numeric" placeholder="e.g. 784512">
+      </div>
+      <div>
+        <label for="age">Authority age <small>(days)</small></label>
+        <input id="age" name="age" type="number" min="0" placeholder="e.g. 2190">
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="dispatch@carrier.com">
+      </div>
+      <div>
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" placeholder="(614) 555-0142">
+      </div>
+      <div>
+        <label for="ptype">Phone type</label>
+        <select id="ptype" name="ptype">
+          <option value="landline">Landline</option>
+          <option value="mobile">Mobile</option>
+          <option value="voip">VoIP</option>
+        </select>
+      </div>
+      <div>
+        <label for="bid">Bid vs market <small>(%, −18 = 18% below)</small></label>
+        <input id="bid" name="bid" type="number" step="1" placeholder="0">
+      </div>
+      <div class="full">
+        <label for="transcript">Call transcript</label>
+        <textarea id="transcript" name="transcript" placeholder="Paste or type what the carrier said…"></textarea>
+      </div>
+    </form>
+  </section>
+
+  <div>
+    <section class="card" aria-labelledby="h-verdict">
+      <h2 id="h-verdict">Verdict</h2>
+      <div id="verdict" class="verdict" role="status" aria-live="polite">
+        <div class="pct" id="pct">–</div>
+        <div class="call" id="call">Enter a call</div>
+        <div class="sub" id="sub">Pick a preset or fill the form.</div>
+      </div>
+      <ul class="reasons" id="reasons" aria-label="Reasons ranked by weight"></ul>
+      <div class="actions">
+        <button type="button" class="fraud" id="btn-fraud">Confirm fraud</button>
+        <button type="button" class="legit" id="btn-legit">Confirm legit</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-mem">
+      <div class="row">
+        <h2 id="h-mem">Network memory</h2>
+        <button type="button" class="link" id="btn-reset">Reset</button>
+      </div>
+      <div class="stats" style="margin-top:12px">
+        <div class="stat"><b id="s-learned">0</b><span>calls learned</span></div>
+        <div class="stat"><b id="s-flagged">0</b><span>flagged IDs</span></div>
+        <div class="stat"><b id="s-acc">–</b><span>accuracy, last 20</span></div>
+      </div>
+      <div class="chips" id="chips" aria-label="Flagged identifiers"></div>
+      <div class="weights" id="weights" aria-label="Model weights"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-log">
+      <h2 id="h-log">What it learned</h2>
+      <ul class="log" id="log"><li class="none" style="border:0;background:none">Nothing yet. Confirm a call to teach the model.</li></ul>
+    </section>
+  </div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Model ----------
+  const SIGNALS = [
+    { key: 'newMC',   label: 'New MC authority (<90 days)' },
+    { key: 'freeMail',label: 'Free email domain' },
+    { key: 'voip',    label: 'VoIP phone' },
+    { key: 'lowBid',  label: 'Bid 15%+ below market' },
+    { key: 'payment', label: 'Payment / factoring change request' },
+    { key: 'urgency', label: 'Urgency language' },
+    { key: 'offPlat', label: 'Moves call to text / WhatsApp' },
+    { key: 'network', label: 'Identifier flagged by network' },
+  ];
+  const DEFAULT_W = { newMC: 1.2, freeMail: 0.8, voip: 0.8, lowBid: 1.4, payment: 1.6, urgency: 0.9, offPlat: 0.86, network: 2.6 };
+  const DEFAULT_B = -2.95;
+  const LR = 0.5;
+  const THRESHOLD = 0.5;
+  const STORE_KEY = 'lanewatch.v1';
+
+  const FREE_DOMAINS = new Set(['gmail.com','yahoo.com','hotmail.com','outlook.com','aol.com','icloud.com','live.com','msn.com','protonmail.com','proton.me','gmx.com','mail.com','yandex.com','zoho.com','ymail.com']);
+  const RX = {
+    payment: /\b(factor(ing)?|quick ?pay|remit(tance)?|wire|bank (info|details|account)|new (bank|account)|payment (info|details|method|address)|change (the |my |our )?(payment|bank|remit))/i,
+    urgency: /\b(urgent|asap|right now|immediately|hurry|today only|last minute|need (it|this|an answer) now|before someone else)\b/i,
+    offPlat: /\b(whats ?app|telegram|text me|texting|over text|via text|move (this|it) (over )?to (text|sms)|sms)\b/i,
+  };
+
+  const sigmoid = z => 1 / (1 + Math.exp(-z));
+  const digits = s => (s || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+  const normEmail = s => (s || '').trim().toLowerCase();
+  const normMC = s => (s || '').replace(/\D/g, '').replace(/^0+/, '');
+
+  // ---------- State ----------
+  const fresh = () => ({
+    w: { ...DEFAULT_W }, b: DEFAULT_B,
+    block: { phones: [], emails: [], mcs: [] },
+    history: [], learned: 0, log: []
+  });
+  let state = load();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return fresh();
+      const s = JSON.parse(raw);
+      const f = fresh();
+      return {
+        w: { ...f.w, ...(s.w || {}) },
+        b: typeof s.b === 'number' ? s.b : f.b,
+        block: { ...f.block, ...(s.block || {}) },
+        history: Array.isArray(s.history) ? s.history : [],
+        learned: s.learned | 0,
+        log: Array.isArray(s.log) ? s.log : []
+      };
+    } catch (e) { return fresh(); }
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* storage blocked: keep in memory */ }
+  }
+
+  // ---------- Features ----------
+  const $ = id => document.getElementById(id);
+  const form = $('form');
+
+  function readCall() {
+    return {
+      mc: $('mc').value, age: $('age').value, email: $('email').value,
+      phone: $('phone').value, ptype: $('ptype').value, bid: $('bid').value,
+      transcript: $('transcript').value
+    };
+  }
+  function isEmpty(c) { return !c.mc && !c.age && !c.email && !c.phone && !c.bid && !c.transcript.trim(); }
+
+  function networkHits(c) {
+    const hits = [];
+    const p = digits(c.phone), e = normEmail(c.email), m = normMC(c.mc);
+    if (p && state.block.phones.includes(p)) hits.push('phone ' + fmtPhone(p));
+    if (e && state.block.emails.includes(e)) hits.push('email ' + e);
+    if (m && state.block.mcs.includes(m)) hits.push('MC ' + m);
+    return hits;
+  }
+
+  function features(c) {
+    const age = c.age === '' ? NaN : Number(c.age);
+    const bid = c.bid === '' ? NaN : Number(c.bid);
+    const domain = normEmail(c.email).split('@')[1] || '';
+    const t = c.transcript || '';
+    return {
+      newMC: Number.isFinite(age) && age < 90 ? 1 : 0,
+      freeMail: FREE_DOMAINS.has(domain) ? 1 : 0,
+      voip: c.ptype === 'voip' ? 1 : 0,
+      lowBid: Number.isFinite(bid) && bid <= -15 ? 1 : 0,
+      payment: RX.payment.test(t) ? 1 : 0,
+      urgency: RX.urgency.test(t) ? 1 : 0,
+      offPlat: RX.offPlat.test(t) ? 1 : 0,
+      network: networkHits(c).length ? 1 : 0,
+    };
+  }
+
+  function score(x) {
+    let z = state.b;
+    for (const s of SIGNALS) z += state.w[s.key] * x[s.key];
+    return sigmoid(z);
+  }
+
+  // ---------- Render ----------
+  let lastPct = null;
+
+  function fmtPhone(d) {
+    return d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  }
+
+  function renderVerdict() {
+    const c = readCall();
+    const box = $('verdict'), list = $('reasons');
+    if (isEmpty(c)) {
+      box.className = 'verdict';
+      $('pct').textContent = '–'; $('call').textContent = 'Enter a call';
+      $('sub').textContent = 'Pick a preset or fill the form.';
+      list.innerHTML = ''; lastPct = null;
+      return;
+    }
+    const x = features(c);
+    const p = score(x);
+    const pct = Math.round(p * 100);
+    const hold = p >= THRESHOLD;
+    box.className = 'verdict ' + (hold ? 'hold' : 'safe');
+    $('pct').textContent = pct + '%';
+    $('call').textContent = hold ? 'Hold the load' : 'Safe to book';
+    $('sub').textContent = 'Fraud probability · threshold ' + Math.round(THRESHOLD * 100) + '%';
+
+    const active = SIGNALS.filter(s => x[s.key]).sort((a, b) => state.w[b.key] - state.w[a.key]);
+    if (!active.length) {
+      list.innerHTML = '<li class="none" style="background:none">No risk signals detected.</li>';
+    } else {
+      const maxW = Math.max(...SIGNALS.map(s => Math.abs(state.w[s.key])), 0.01);
+      const hits = networkHits(c);
+      list.innerHTML = active.map(s => {
+        const w = state.w[s.key];
+        const extra = s.key === 'network' ? ' — ' + esc(hits.join(', ')) : '';
+        return `<li class="${s.key === 'network' ? 'net' : ''}"><span>${esc(s.label)}${extra}</span><span class="w">+${w.toFixed(2)}</span><span class="bar"><i style="width:${Math.max(0, w) / maxW * 100}%"></i></span></li>`;
+      }).join('');
+    }
+    lastPct = pct;
+  }
+
+  let bumped = new Set();
+  function renderMemory() {
+    const b = state.block;
+    const flagged = b.phones.length + b.emails.length + b.mcs.length;
+    $('s-learned').textContent = state.learned;
+    $('s-flagged').textContent = flagged;
+    const recent = state.history.slice(-20);
+    $('s-acc').textContent = recent.length
+      ? Math.round(recent.filter(h => h.pred === h.label).length / recent.length * 100) + '%'
+      : '–';
+    $('chips').innerHTML = [
+      ...b.phones.map(p => '☎ ' + fmtPhone(p)),
+      ...b.emails.map(e => '✉ ' + e),
+      ...b.mcs.map(m => 'MC ' + m)
+    ].map(t => `<span class="chip">${esc(t)}</span>`).join('');
+
+    const maxW = Math.max(3, ...SIGNALS.map(s => state.w[s.key]));
+    $('weights').innerHTML =
+      `<div class="wrow"><span>Base rate (bias)</span><span class="track"><i style="width:0"></i></span><span class="num">${state.b.toFixed(2)}</span></div>` +
+      SIGNALS.map(s => {
+        const w = state.w[s.key];
+        return `<div class="wrow${bumped.has(s.key) ? ' bump' : ''}"><span>${esc(s.label.replace(/ \(.*\)/, ''))}</span><span class="track"><i style="width:${Math.max(0, w) / maxW * 100}%"></i></span><span class="num">${w.toFixed(2)}</span></div>`;
+      }).join('');
+
+    const log = $('log');
+    if (!state.log.length) {
+      log.innerHTML = '<li class="none" style="border:0;background:none">Nothing yet. Confirm a call to teach the model.</li>';
+    } else {
+      log.innerHTML = state.log.slice().reverse().map(e =>
+        `<li class="${e.kind}"><time>${esc(new Date(e.t).toLocaleTimeString())}</time>${esc(e.text)}</li>`
+      ).join('');
+    }
+  }
+
+  function render() { renderVerdict(); renderMemory(); }
+
+  // ---------- Learning ----------
+  function confirm(label) {
+    const c = readCall();
+    if (isEmpty(c)) { toast('Fill in a call first.'); return; }
+    const x = features(c);
+    const p = score(x);
+    const pred = p >= THRESHOLD ? 1 : 0;
+    const err = label - p;               // gradient of log-loss w.r.t. logit
+    const changes = [];
+    bumped = new Set();
+
+    for (const s of SIGNALS) {
+      if (!x[s.key]) continue;
+      const before = state.w[s.key];
+      const after = Math.round((before + LR * err) * 100) / 100;
+      state.w[s.key] = after;
+      if (after !== before) {
+        bumped.add(s.key);
+        changes.push(`${s.label.replace(/ \(.*\)/, '')} ${before.toFixed(2)} → ${after.toFixed(2)}`);
+      }
+    }
+    const bBefore = state.b;
+    state.b = Math.round((state.b + LR * err * 0.5) * 100) / 100;
+
+    const added = [];
+    if (label === 1) {
+      const ph = digits(c.phone), em = normEmail(c.email), mc = normMC(c.mc);
+      if (ph && !state.block.phones.includes(ph)) { state.block.phones.push(ph); added.push('phone ' + fmtPhone(ph)); }
+      if (em && !state.block.emails.includes(em)) { state.block.emails.push(em); added.push('email ' + em); }
+      if (mc && !state.block.mcs.includes(mc)) { state.block.mcs.push(mc); added.push('MC ' + mc); }
+    }
+
+    state.history.push({ pred, label });
+    if (state.history.length > 200) state.history.shift();
+    state.learned++;
+
+    const pct = Math.round(p * 100);
+    const verdictWas = pred ? 'held it' : 'cleared it';
+    const right = pred === label;
+    let text = `Confirmed ${label ? 'FRAUD' : 'LEGIT'}. Model said ${pct}% and ${verdictWas} — ${right ? 'correct' : 'a miss'}. `;
+    text += changes.length ? (label ? 'Trusting these signals more: ' : 'Trusting these signals less: ') + changes.join('; ') + '. ' : 'No risk signals to adjust. ';
+    if (state.b !== bBefore) text += `Base rate ${bBefore.toFixed(2)} → ${state.b.toFixed(2)}. `;
+    if (added.length) text += 'Added to network blocklist: ' + added.join(', ') + '.';
+    state.log.push({ t: Date.now(), kind: label ? 'f' : 'l', text: text.trim() });
+    if (state.log.length > 50) state.log.shift();
+
+    save();
+    render();
+    const nowPct = lastPct;
+    toast(`Learned. Same call now scores ${nowPct}% (was ${pct}%).`);
+  }
+
+  function reset() {
+    if (!window.confirm('Reset all learned weights and the network blocklist?')) return;
+    state = fresh(); bumped = new Set();
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    render();
+    toast('Network memory reset.');
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ---------- Presets ----------
+  const PRESETS = {
+    legit: {
+      mc: '784512', age: '2190', email: 'dispatch@ridgelinefreight.com', phone: '(614) 555-0142', ptype: 'landline', bid: '-3',
+      transcript: "Hi, this is Dana with Ridgeline Freight. We can cover your Columbus to Atlanta load Thursday at the posted rate. Our insurance certificate is on file with you. Please send the rate confirmation to dispatch@ridgelinefreight.com."
+    },
+    scam: {
+      mc: '1123987', age: '412', email: 'bluehaul.dispatch@gmail.com', phone: '(305) 555-0199', ptype: 'voip', bid: '-6',
+      transcript: "Hey, Mike from Blue Haul Logistics. Got a truck near Dallas that fits your Houston load, rate works for us. I'm on the road most of the day, so can we move this over to WhatsApp? Easier to send the paperwork there."
+    },
+    repeat: {
+      mc: '1189034', age: '21', email: 'ops@summitcarriersllc.com', phone: '305.555.0199', ptype: 'voip', bid: '-5',
+      transcript: "This is Jake with Summit Carriers. We have a driver empty in Fort Worth and can take your Houston load. Send the rate confirmation to ops@summitcarriersllc.com."
+    }
+  };
+  function applyPreset(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    for (const k of Object.keys(p)) $(k === 'ptype' ? 'ptype' : k).value = p[k];
+    bumped = new Set();
+    render();
+  }
+
+  // ---------- Wire up ----------
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+  form.addEventListener('input', renderVerdict);
+  form.addEventListener('change', renderVerdict);
+  form.addEventListener('submit', e => e.preventDefault());
+  $('btn-fraud').addEventListener('click', () => confirm(1));
+  $('btn-legit').addEventListener('click', () => confirm(0));
+  $('btn-reset').addEventListener('click', reset);
+
+  render();
+})();
+</script>
+</body>
+</html>
