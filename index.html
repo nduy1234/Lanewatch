@@ -5,163 +5,216 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lanewatch</title>
 <meta name="description" content="Freight-fraud checker for brokers that learns from every confirmed call.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M9 23 16 7l7 16' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23006b3f'/><rect x='3' y='3' width='26' height='26' rx='4' fill='none' stroke='white' stroke-width='2'/><path d='M16 8v16' stroke='white' stroke-width='3' stroke-dasharray='4 3'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Road palette: asphalt navy, concrete grey, sign green, DOT orange, reflective white, lane yellow */
   :root {
-    --bg: #f5f6f4;
+    --asphalt: #1b2430;
+    --asphalt-2: #2a3542;
+    --concrete: #d9dcde;
+    --concrete-dark: #8b939a;
+    --sign-green: #006b3f;
+    --dot-orange: #f47b20;
+    --reflective: #ffffff;
+    --lane-yellow: #f5c518;
+
+    --bg: #e9ebec;
     --surface: #ffffff;
-    --surface-2: #eef0ec;
-    --text: #17201c;
-    --muted: #5b6862;
-    --border: #d8ddd8;
-    --accent: #0f766e;
-    --accent-ink: #ffffff;
-    --danger: #b42318;
-    --danger-bg: #fdecea;
-    --safe: #146c43;
-    --safe-bg: #e6f4ec;
-    --warn: #9a6700;
-    --focus: #2563eb;
-    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+    --surface-2: #f2f3f4;
+    --text: #1b2430;
+    --muted: #55606b;
+    --border: #cfd3d6;
+    --focus: #1d4ed8;
+    --orange-ink: #a34709;
+    --green-ink: #006b3f;
+    --post: #8b939a;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1412;
-      --surface: #171d1a;
-      --surface-2: #1f2723;
-      --text: #e7ece9;
-      --muted: #98a59f;
-      --border: #2c3631;
-      --accent: #2dd4bf;
-      --accent-ink: #062320;
-      --danger: #ff7b6e;
-      --danger-bg: #3a1714;
-      --safe: #5fd39a;
-      --safe-bg: #12301f;
-      --warn: #e3b341;
-      --focus: #7aa2ff;
-      --shadow: none;
+      --bg: #121922;
+      --surface: #1b2430;
+      --surface-2: #232e3b;
+      --text: #f3f5f6;
+      --muted: #a3adb6;
+      --border: #313d4b;
+      --focus: #ffd34d;
+      --orange-ink: #ff9a4d;
+      --green-ink: #4fd18f;
+      --post: #4a5562;
     }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 "Barlow", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   }
-  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  .cond { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; }
+
   header {
-    max-width: 1180px; margin: 0 auto; padding: 20px 16px 8px;
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+    max-width: 1200px; margin: 0 auto; padding: 28px 20px 12px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
   }
-  .logo { font-size: 22px; font-weight: 750; letter-spacing: -.02em; margin: 0; }
-  .logo span { color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; margin: 0; font: 700 30px/1 "Barlow Condensed", sans-serif; letter-spacing: .01em; }
+  .mark { width: 30px; height: 30px; border-radius: 5px; background: var(--sign-green); position: relative; flex: none; }
+  .mark::before { content: ""; position: absolute; inset: 3px; border: 2px solid var(--reflective); border-radius: 3px; }
+  .mark::after { content: ""; position: absolute; left: 13px; top: 7px; bottom: 7px; width: 3px;
+    background: repeating-linear-gradient(var(--reflective) 0 4px, transparent 4px 7px); }
   .tag { color: var(--muted); margin: 0; }
+
   main {
-    max-width: 1180px; margin: 0 auto; padding: 8px 16px 40px;
-    display: grid; gap: 16px;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    align-items: start;
+    max-width: 1200px; margin: 0 auto; padding: 12px 20px 56px;
+    display: grid; gap: 28px; align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
-  .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 18px; box-shadow: var(--shadow); min-width: 0;
-  }
-  .card + .card { margin-top: 16px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 650; }
-  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 880px) { main { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+  @media (max-width: 520px) { header, main { padding-left: 16px; padding-right: 16px; } }
+
+  h2 { font-size: 18px; font-weight: 600; margin: 0 0 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+  .call-card { border-radius: 6px; padding: 24px; position: sticky; top: 20px; }
+  @media (max-width: 880px) { .call-card { position: static; } }
+  .sign { scroll-margin-top: 16px; }
+  .side { display: grid; gap: 20px; min-width: 0; }
+  .plain { border-radius: 12px; padding: 20px; }
+
+  .presets-label { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .presets button { flex: 1 1 140px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   @media (max-width: 520px) { .grid { grid-template-columns: minmax(0, 1fr); } }
   .full { grid-column: 1 / -1; }
-  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; }
   label small { font-weight: 400; color: var(--muted); }
   input, select, textarea {
     width: 100%; font: inherit; color: var(--text); background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px;
+    border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px;
   }
-  textarea { min-height: 112px; resize: vertical; }
-  input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; border-radius: 9px; }
+  textarea { min-height: 140px; resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; }
+
   button {
-    font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px; padding: 9px 14px;
+    font: 600 15px/1.2 "Barlow", sans-serif; cursor: pointer; border-radius: 4px; padding: 11px 14px;
     border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
   }
-  button:hover { filter: brightness(.97); }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-  button.fraud { background: var(--danger); color: #fff; border-color: transparent; }
-  button.legit { background: var(--safe); color: #fff; border-color: transparent; }
-  @media (prefers-color-scheme: dark) {
-    button.fraud, button.legit { color: #0f1412; }
-    button:hover { filter: brightness(1.1); }
-  }
-  button.link { background: none; border: none; padding: 4px 0; color: var(--muted); text-decoration: underline; font-weight: 500; }
+  button:hover { border-color: var(--concrete-dark); }
+  button.fraud { background: var(--dot-orange); color: #111; border-color: var(--dot-orange); }
+  button.legit { background: var(--sign-green); color: var(--reflective); border-color: var(--sign-green); }
+  button.fraud:hover, button.legit:hover { filter: brightness(1.07); }
+  button.link { background: none; border: none; padding: 4px 2px; color: var(--muted); text-decoration: underline; font-weight: 500; }
 
-  .verdict {
-    border-radius: 14px; padding: 20px; text-align: center; border: 2px solid var(--border);
-    background: var(--surface-2); transition: background .25s, border-color .25s;
+  /* ---- Signature moment: the road sign ---- */
+  .signpost { perspective: 1000px; }
+  .sign {
+    --sb: var(--concrete); --si: var(--asphalt);
+    background: var(--sb); color: var(--si);
+    border-radius: 14px; padding: 9px; position: relative; z-index: 1;
+    box-shadow: 0 14px 28px -12px rgba(10, 16, 24, .45);
+    transform-origin: 50% 0;
   }
-  .verdict.hold { background: var(--danger-bg); border-color: var(--danger); }
-  .verdict.safe { background: var(--safe-bg); border-color: var(--safe); }
-  .pct { font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-  .verdict.hold .pct, .verdict.hold .call { color: var(--danger); }
-  .verdict.safe .pct, .verdict.safe .call { color: var(--safe); }
-  .call { font-size: 20px; font-weight: 750; margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .delta { font-weight: 700; }
-  .reasons { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; }
+  .sign.safe { --sb: var(--sign-green); --si: var(--reflective); }
+  .sign.hold { --sb: var(--dot-orange); --si: #111111; }
+  .sign-inner {
+    border: 4px solid var(--si); border-radius: 8px; padding: 18px 16px 20px; text-align: center;
+  }
+  .pct { font: 700 clamp(84px, 13vw, 128px)/.9 "Barlow Condensed", "Arial Narrow", sans-serif; font-variant-numeric: tabular-nums; }
+  .call { font: 700 clamp(28px, 4vw, 38px)/1.05 "Barlow Condensed", "Arial Narrow", sans-serif; margin-top: 6px; }
+  .sub { font-size: 14px; margin-top: 8px; opacity: .85; }
+  .posts { display: flex; justify-content: space-between; padding: 0 24%; margin-top: -4px; }
+  .posts i { width: 12px; height: 46px; background: var(--post); border-radius: 0 0 2px 2px; }
+  .sign.flip { animation: flip .7s cubic-bezier(.2, .9, .25, 1.15); }
+  @keyframes flip {
+    0% { transform: rotateX(-88deg); }
+    100% { transform: rotateX(0); }
+  }
+
+  .reasons { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
   .reasons li {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
-    padding: 8px 10px; border-radius: 9px; background: var(--surface-2); font-size: 14px;
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 9px 12px; background: var(--surface-2); border-left: 4px solid var(--concrete-dark); border-radius: 0 4px 4px 0;
   }
-  .reasons .w { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
-  .bar { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--danger); }
-  .reasons li.net { outline: 2px solid var(--danger); }
-  .none { color: var(--muted); font-size: 14px; padding: 6px 0; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  .actions button { flex: 1 1 140px; }
+  .reasons li.net { border-left-color: var(--dot-orange); }
+  .reasons .w { font: 700 20px/1 "Barlow Condensed", sans-serif; color: var(--orange-ink); font-variant-numeric: tabular-nums; }
+  .none { color: var(--muted); font-size: 15px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .actions button { flex: 1 1 150px; padding: 13px 14px; font-size: 16px; }
 
-  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .stat { background: var(--surface-2); border-radius: 10px; padding: 10px; }
-  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .stat span { font-size: 12px; color: var(--muted); }
-  .weights { display: grid; gap: 5px; margin-top: 14px; }
-  .wrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 44px; gap: 8px; align-items: center; font-size: 13px; }
-  @media (max-width: 420px) { .wrow { grid-template-columns: 110px minmax(0, 1fr) 40px; } }
-  .wrow .track { height: 8px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
-  .wrow .track i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
-  .wrow.bump .track i { background: var(--warn); }
-  .wrow .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); overflow-wrap: anywhere; }
-  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 300px; overflow: auto; }
-  .log li { font-size: 13px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; }
-  .log li.f { border-left-color: var(--danger); }
-  .log li.l { border-left-color: var(--safe); }
-  .log time { display: block; color: var(--muted); font-size: 11px; }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .row h2 { margin: 0; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* ---- Lane-marking weight bars ---- */
+  .weights { display: grid; gap: 9px; }
+  .wrow { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 2.8em 3.4em; gap: 10px; align-items: center; font-size: 14px; }
+  @media (max-width: 420px) { .wrow { grid-template-columns: 7.6em minmax(0, 1fr) 2.6em 3.2em; gap: 6px; font-size: 13px; } }
+  .track { height: 16px; background: var(--asphalt); border-radius: 3px; position: relative; overflow: hidden; }
+  @media (prefers-color-scheme: dark) { .track { background: #0b1016; box-shadow: inset 0 0 0 1px #3a4655; } }
+  .track .fill {
+    position: absolute; left: 6px; top: 6px; height: 4px; width: 0; max-width: calc(100% - 12px);
+    background: repeating-linear-gradient(90deg, var(--reflective) 0 14px, transparent 14px 22px);
+    transition: width .9s cubic-bezier(.2, .8, .2, 1);
+  }
+  .num { text-align: right; font: 600 18px/1 "Barlow Condensed", sans-serif; font-variant-numeric: tabular-nums; }
+  .delta { font: 700 15px/1 "Barlow Condensed", sans-serif; padding: 3px 5px; border-radius: 3px; text-align: center; opacity: 0; }
+  .wrow.changed .fill { animation: laneflash 2.6s steps(1, end); }
+  @keyframes laneflash { 0%, 80% { background: var(--lane-yellow); } }
+  .wrow.changed .delta { animation: pop 2.6s ease-out forwards; }
+  .delta.up { background: var(--lane-yellow); color: #111; }
+  .delta.down { background: var(--sign-green); color: var(--reflective); }
+  @keyframes pop { 0% { opacity: 0; transform: translateY(4px); } 12%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  .bias { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .stat { border-top: 4px solid var(--asphalt); padding-top: 8px; }
+  @media (prefers-color-scheme: dark) { .stat { border-top-color: var(--concrete-dark); } }
+  .stat b { display: block; font: 700 38px/1 "Barlow Condensed", sans-serif; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .row h2 { margin: 0 0 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 8px; margin-bottom: 20px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600;
+    padding: 4px 10px 4px 8px; border-radius: 3px 12px 12px 3px;
+    background: var(--surface-2); border: 1.5px solid var(--dot-orange); color: var(--text); overflow-wrap: anywhere;
+  }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--dot-orange); flex: none; }
+  .chip.new { animation: slide .5s cubic-bezier(.2, .8, .2, 1) both; }
+  .chip.new:nth-child(2) { animation-delay: .08s; } .chip.new:nth-child(3) { animation-delay: .16s; }
+  @keyframes slide { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+  .empty-chips { font-size: 14px; color: var(--muted); }
+
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 320px; overflow: auto; }
+  .log li { font-size: 14px; padding: 10px 12px; background: var(--surface-2); border-left: 4px solid var(--concrete-dark); border-radius: 0 4px 4px 0; }
+  .log li.f { border-left-color: var(--dot-orange); }
+  .log li.l { border-left-color: var(--sign-green); }
+  .log time { display: block; color: var(--muted); font-size: 12px; }
+
   .toast {
     position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0;
-    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px;
-    transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100% - 32px);
+    background: var(--asphalt); color: var(--reflective); padding: 11px 16px; border-radius: 6px; font-size: 15px;
+    border-left: 4px solid var(--lane-yellow);
+    transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100% - 32px); z-index: 5;
   }
+  @media (prefers-color-scheme: dark) { .toast { background: var(--reflective); color: var(--asphalt); } }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition: none !important; }
+    .wrow.changed .delta { animation: none; opacity: 1; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1 class="logo">Lane<span>watch</span></h1>
+  <h1 class="brand"><span class="mark" aria-hidden="true"></span>Lanewatch</h1>
   <p class="tag">Freight-fraud checker that learns from every confirmed call.</p>
 </header>
 
 <main>
-  <section class="card" aria-labelledby="h-call">
+  <section class="card call-card" aria-labelledby="h-call">
     <h2 id="h-call">Carrier call</h2>
-    <div class="presets" role="group" aria-label="Demo presets">
+    <p class="presets-label" id="presets-label">Try a demo call</p>
+    <div class="presets" role="group" aria-labelledby="presets-label">
       <button type="button" data-preset="legit">1 · Legit carrier</button>
       <button type="button" data-preset="scam">2 · Subtle scam</button>
       <button type="button" data-preset="repeat">3 · Repeat scammer</button>
@@ -169,11 +222,11 @@
     <form id="form" class="grid" autocomplete="off" novalidate>
       <div>
         <label for="mc">MC number</label>
-        <input id="mc" name="mc" inputmode="numeric" placeholder="e.g. 784512">
+        <input id="mc" name="mc" inputmode="numeric" placeholder="784512">
       </div>
       <div>
         <label for="age">Authority age <small>(days)</small></label>
-        <input id="age" name="age" type="number" min="0" placeholder="e.g. 2190">
+        <input id="age" name="age" type="number" min="0" placeholder="2190">
       </div>
       <div>
         <label for="email">Email</label>
@@ -192,24 +245,30 @@
         </select>
       </div>
       <div>
-        <label for="bid">Bid vs market <small>(%, −18 = 18% below)</small></label>
+        <label for="bid">Bid vs market <small>(%, −18 is 18% below)</small></label>
         <input id="bid" name="bid" type="number" step="1" placeholder="0">
       </div>
       <div class="full">
         <label for="transcript">Call transcript</label>
-        <textarea id="transcript" name="transcript" placeholder="Paste or type what the carrier said…"></textarea>
+        <textarea id="transcript" name="transcript" placeholder="Paste or type what the carrier said"></textarea>
       </div>
     </form>
   </section>
 
-  <div>
-    <section class="card" aria-labelledby="h-verdict">
-      <h2 id="h-verdict">Verdict</h2>
-      <div id="verdict" class="verdict" role="status" aria-live="polite">
-        <div class="pct" id="pct">–</div>
-        <div class="call" id="call">Enter a call</div>
-        <div class="sub" id="sub">Pick a preset or fill the form.</div>
+  <div class="side">
+    <section class="signpost" aria-label="Verdict">
+      <div id="verdict" class="sign" role="status" aria-live="polite">
+        <div class="sign-inner">
+          <div class="pct" id="pct">–</div>
+          <div class="call" id="call">Enter a call</div>
+          <div class="sub" id="sub">Pick a demo call or fill in the form</div>
+        </div>
       </div>
+      <div class="posts" aria-hidden="true"><i></i><i></i></div>
+    </section>
+
+    <section class="card plain" aria-labelledby="h-why">
+      <h2 id="h-why">Why</h2>
       <ul class="reasons" id="reasons" aria-label="Reasons ranked by weight"></ul>
       <div class="actions">
         <button type="button" class="fraud" id="btn-fraud">Confirm fraud</button>
@@ -217,23 +276,25 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="h-mem">
+    <section class="card plain" aria-labelledby="h-mem">
       <div class="row">
         <h2 id="h-mem">Network memory</h2>
         <button type="button" class="link" id="btn-reset">Reset</button>
       </div>
-      <div class="stats" style="margin-top:12px">
+      <div class="stats">
         <div class="stat"><b id="s-learned">0</b><span>calls learned</span></div>
         <div class="stat"><b id="s-flagged">0</b><span>flagged IDs</span></div>
         <div class="stat"><b id="s-acc">–</b><span>accuracy, last 20</span></div>
       </div>
-      <div class="chips" id="chips" aria-label="Flagged identifiers"></div>
-      <div class="weights" id="weights" aria-label="Model weights"></div>
+      <div class="chips" id="chips" aria-label="Flagged identifiers" aria-live="polite"></div>
+      <h2 id="h-weights">What the model trusts</h2>
+      <div class="weights" id="weights" aria-labelledby="h-weights"></div>
+      <p class="bias" id="bias"></p>
     </section>
 
-    <section class="card" aria-labelledby="h-log">
+    <section class="card plain" aria-labelledby="h-log">
       <h2 id="h-log">What it learned</h2>
-      <ul class="log" id="log"><li class="none" style="border:0;background:none">Nothing yet. Confirm a call to teach the model.</li></ul>
+      <ul class="log" id="log"></ul>
     </section>
   </div>
 </main>
@@ -245,14 +306,14 @@
 
   // ---------- Model ----------
   const SIGNALS = [
-    { key: 'newMC',   label: 'New MC authority (<90 days)' },
-    { key: 'freeMail',label: 'Free email domain' },
-    { key: 'voip',    label: 'VoIP phone' },
-    { key: 'lowBid',  label: 'Bid 15%+ below market' },
-    { key: 'payment', label: 'Payment / factoring change request' },
-    { key: 'urgency', label: 'Urgency language' },
-    { key: 'offPlat', label: 'Moves call to text / WhatsApp' },
-    { key: 'network', label: 'Identifier flagged by network' },
+    { key: 'newMC',   label: 'New MC authority (<90 days)', short: 'New MC' },
+    { key: 'freeMail',label: 'Free email domain',           short: 'Free email' },
+    { key: 'voip',    label: 'VoIP phone',                  short: 'VoIP phone' },
+    { key: 'lowBid',  label: 'Bid 15%+ below market',       short: 'Low bid' },
+    { key: 'payment', label: 'Payment or factoring change request', short: 'Payment change' },
+    { key: 'urgency', label: 'Urgency language',            short: 'Urgency' },
+    { key: 'offPlat', label: 'Moves call to text or WhatsApp', short: 'Text / WhatsApp' },
+    { key: 'network', label: 'Identifier flagged by network', short: 'Network flag' },
   ];
   const DEFAULT_W = { newMC: 1.2, freeMail: 0.8, voip: 0.8, lowBid: 1.4, payment: 1.6, urgency: 0.9, offPlat: 0.86, network: 2.6 };
   const DEFAULT_B = -2.95;
@@ -271,6 +332,7 @@
   const digits = s => (s || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
   const normEmail = s => (s || '').trim().toLowerCase();
   const normMC = s => (s || '').replace(/\D/g, '').replace(/^0+/, '');
+  const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- State ----------
   const fresh = () => ({
@@ -347,6 +409,7 @@
 
   // ---------- Render ----------
   let lastPct = null;
+  let lastSignKey = '';
 
   function fmtPhone(d) {
     return d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d;
@@ -354,43 +417,70 @@
   function esc(s) {
     return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
+  function retrigger(el, cls) {
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+  }
 
   function renderVerdict() {
     const c = readCall();
-    const box = $('verdict'), list = $('reasons');
+    const sign = $('verdict'), list = $('reasons');
+    let key;
     if (isEmpty(c)) {
-      box.className = 'verdict';
+      sign.className = 'sign';
       $('pct').textContent = '–'; $('call').textContent = 'Enter a call';
-      $('sub').textContent = 'Pick a preset or fill the form.';
-      list.innerHTML = ''; lastPct = null;
-      return;
-    }
-    const x = features(c);
-    const p = score(x);
-    const pct = Math.round(p * 100);
-    const hold = p >= THRESHOLD;
-    box.className = 'verdict ' + (hold ? 'hold' : 'safe');
-    $('pct').textContent = pct + '%';
-    $('call').textContent = hold ? 'Hold the load' : 'Safe to book';
-    $('sub').textContent = 'Fraud probability · threshold ' + Math.round(THRESHOLD * 100) + '%';
-
-    const active = SIGNALS.filter(s => x[s.key]).sort((a, b) => state.w[b.key] - state.w[a.key]);
-    if (!active.length) {
-      list.innerHTML = '<li class="none" style="background:none">No risk signals detected.</li>';
+      $('sub').textContent = 'Pick a demo call or fill in the form';
+      list.innerHTML = '<li class="none">Reasons show up here, strongest first.</li>';
+      lastPct = null; key = 'empty';
     } else {
-      const maxW = Math.max(...SIGNALS.map(s => Math.abs(state.w[s.key])), 0.01);
-      const hits = networkHits(c);
-      list.innerHTML = active.map(s => {
-        const w = state.w[s.key];
-        const extra = s.key === 'network' ? ' — ' + esc(hits.join(', ')) : '';
-        return `<li class="${s.key === 'network' ? 'net' : ''}"><span>${esc(s.label)}${extra}</span><span class="w">+${w.toFixed(2)}</span><span class="bar"><i style="width:${Math.max(0, w) / maxW * 100}%"></i></span></li>`;
-      }).join('');
+      const x = features(c);
+      const p = score(x);
+      const pct = Math.round(p * 100);
+      const hold = p >= THRESHOLD;
+      sign.className = 'sign ' + (hold ? 'hold' : 'safe');
+      $('pct').textContent = pct + '%';
+      $('call').textContent = hold ? 'Hold the load' : 'Safe to book';
+      $('sub').textContent = 'Fraud risk. Loads are held at ' + Math.round(THRESHOLD * 100) + '% or more.';
+
+      const active = SIGNALS.filter(s => x[s.key]).sort((a, b) => state.w[b.key] - state.w[a.key]);
+      if (!active.length) {
+        list.innerHTML = '<li class="none">No risk signals on this call.</li>';
+      } else {
+        const hits = networkHits(c);
+        list.innerHTML = active.map(s => {
+          const extra = s.key === 'network' ? ': ' + esc(hits.join(', ')) : '';
+          return `<li class="${s.key === 'network' ? 'net' : ''}"><span>${esc(s.label)}${extra}</span><span class="w">+${state.w[s.key].toFixed(2)}</span></li>`;
+        }).join('');
+      }
+      lastPct = pct; key = pct + (hold ? 'h' : 's');
     }
-    lastPct = pct;
+    if (key !== lastSignKey) { lastSignKey = key; retrigger(sign, 'flip'); }
   }
 
-  let bumped = new Set();
-  function renderMemory() {
+  function buildWeights() {
+    $('weights').innerHTML = SIGNALS.map(s =>
+      `<div class="wrow" data-k="${s.key}" title="${esc(s.label)}"><span>${esc(s.short)}</span><span class="track"><i class="fill"></i></span><span class="num"></span><span class="delta" aria-hidden="true"></span></div>`
+    ).join('');
+  }
+
+  function renderWeights(deltas) {
+    const maxW = Math.max(3.2, ...SIGNALS.map(s => state.w[s.key]));
+    for (const s of SIGNALS) {
+      const row = document.querySelector(`.wrow[data-k="${s.key}"]`);
+      const w = state.w[s.key];
+      row.querySelector('.fill').style.width = `calc(${Math.max(0, w) / maxW * 100}% - 12px)`;
+      row.querySelector('.num').textContent = w.toFixed(2);
+      const d = deltas && deltas[s.key];
+      if (d) {
+        const el = row.querySelector('.delta');
+        el.textContent = (d > 0 ? '+' : '−') + Math.abs(d).toFixed(2);
+        el.className = 'delta ' + (d > 0 ? 'up' : 'down');
+        retrigger(row, 'changed');
+      }
+    }
+    $('bias').textContent = `Base rate ${state.b.toFixed(2)}. Each confirmed call nudges these weights.`;
+  }
+
+  function renderMemory(deltas, newIds) {
     const b = state.block;
     const flagged = b.phones.length + b.emails.length + b.mcs.length;
     $('s-learned').textContent = state.learned;
@@ -399,28 +489,22 @@
     $('s-acc').textContent = recent.length
       ? Math.round(recent.filter(h => h.pred === h.label).length / recent.length * 100) + '%'
       : '–';
-    $('chips').innerHTML = [
-      ...b.phones.map(p => '☎ ' + fmtPhone(p)),
-      ...b.emails.map(e => '✉ ' + e),
-      ...b.mcs.map(m => 'MC ' + m)
-    ].map(t => `<span class="chip">${esc(t)}</span>`).join('');
+    const chips = [
+      ...b.phones.map(p => ['phone ' + p, 'Phone ' + fmtPhone(p)]),
+      ...b.emails.map(e => ['email ' + e, e]),
+      ...b.mcs.map(m => ['mc ' + m, 'MC ' + m])
+    ];
+    $('chips').innerHTML = chips.length
+      ? chips.map(([id, t]) => `<span class="chip${newIds && newIds.has(id) ? ' new' : ''}">${esc(t)}</span>`).join('')
+      : '<span class="empty-chips">No flagged identifiers yet. Confirmed fraud lands here.</span>';
 
-    const maxW = Math.max(3, ...SIGNALS.map(s => state.w[s.key]));
-    $('weights').innerHTML =
-      `<div class="wrow"><span>Base rate (bias)</span><span class="track"><i style="width:0"></i></span><span class="num">${state.b.toFixed(2)}</span></div>` +
-      SIGNALS.map(s => {
-        const w = state.w[s.key];
-        return `<div class="wrow${bumped.has(s.key) ? ' bump' : ''}"><span>${esc(s.label.replace(/ \(.*\)/, ''))}</span><span class="track"><i style="width:${Math.max(0, w) / maxW * 100}%"></i></span><span class="num">${w.toFixed(2)}</span></div>`;
-      }).join('');
+    renderWeights(deltas);
 
     const log = $('log');
-    if (!state.log.length) {
-      log.innerHTML = '<li class="none" style="border:0;background:none">Nothing yet. Confirm a call to teach the model.</li>';
-    } else {
-      log.innerHTML = state.log.slice().reverse().map(e =>
-        `<li class="${e.kind}"><time>${esc(new Date(e.t).toLocaleTimeString())}</time>${esc(e.text)}</li>`
-      ).join('');
-    }
+    log.innerHTML = state.log.length
+      ? state.log.slice().reverse().map(e =>
+          `<li class="${e.kind}"><time>${esc(new Date(e.t).toLocaleTimeString())}</time>${esc(e.text)}</li>`).join('')
+      : '<li class="none">Nothing yet. Confirm a call to teach the model.</li>';
   }
 
   function render() { renderVerdict(); renderMemory(); }
@@ -434,7 +518,7 @@
     const pred = p >= THRESHOLD ? 1 : 0;
     const err = label - p;               // gradient of log-loss w.r.t. logit
     const changes = [];
-    bumped = new Set();
+    const deltas = {};
 
     for (const s of SIGNALS) {
       if (!x[s.key]) continue;
@@ -442,19 +526,20 @@
       const after = Math.round((before + LR * err) * 100) / 100;
       state.w[s.key] = after;
       if (after !== before) {
-        bumped.add(s.key);
-        changes.push(`${s.label.replace(/ \(.*\)/, '')} ${before.toFixed(2)} → ${after.toFixed(2)}`);
+        deltas[s.key] = after - before;
+        changes.push(`${s.short} ${before.toFixed(2)} to ${after.toFixed(2)}`);
       }
     }
     const bBefore = state.b;
     state.b = Math.round((state.b + LR * err * 0.5) * 100) / 100;
 
     const added = [];
+    const newIds = new Set();
     if (label === 1) {
       const ph = digits(c.phone), em = normEmail(c.email), mc = normMC(c.mc);
-      if (ph && !state.block.phones.includes(ph)) { state.block.phones.push(ph); added.push('phone ' + fmtPhone(ph)); }
-      if (em && !state.block.emails.includes(em)) { state.block.emails.push(em); added.push('email ' + em); }
-      if (mc && !state.block.mcs.includes(mc)) { state.block.mcs.push(mc); added.push('MC ' + mc); }
+      if (ph && !state.block.phones.includes(ph)) { state.block.phones.push(ph); added.push('phone ' + fmtPhone(ph)); newIds.add('phone ' + ph); }
+      if (em && !state.block.emails.includes(em)) { state.block.emails.push(em); added.push('email ' + em); newIds.add('email ' + em); }
+      if (mc && !state.block.mcs.includes(mc)) { state.block.mcs.push(mc); added.push('MC ' + mc); newIds.add('mc ' + mc); }
     }
 
     state.history.push({ pred, label });
@@ -462,24 +547,23 @@
     state.learned++;
 
     const pct = Math.round(p * 100);
-    const verdictWas = pred ? 'held it' : 'cleared it';
     const right = pred === label;
-    let text = `Confirmed ${label ? 'FRAUD' : 'LEGIT'}. Model said ${pct}% and ${verdictWas} — ${right ? 'correct' : 'a miss'}. `;
+    let text = `Confirmed ${label ? 'fraud' : 'legit'}. The model said ${pct}% and ${pred ? 'held the load' : 'cleared it'}, ${right ? 'which was right' : 'which was a miss'}. `;
     text += changes.length ? (label ? 'Trusting these signals more: ' : 'Trusting these signals less: ') + changes.join('; ') + '. ' : 'No risk signals to adjust. ';
-    if (state.b !== bBefore) text += `Base rate ${bBefore.toFixed(2)} → ${state.b.toFixed(2)}. `;
-    if (added.length) text += 'Added to network blocklist: ' + added.join(', ') + '.';
+    if (state.b !== bBefore) text += `Base rate ${bBefore.toFixed(2)} to ${state.b.toFixed(2)}. `;
+    if (added.length) text += 'Added to the network blocklist: ' + added.join(', ') + '.';
     state.log.push({ t: Date.now(), kind: label ? 'f' : 'l', text: text.trim() });
     if (state.log.length > 50) state.log.shift();
 
     save();
-    render();
-    const nowPct = lastPct;
-    toast(`Learned. Same call now scores ${nowPct}% (was ${pct}%).`);
+    renderVerdict();
+    renderMemory(deltas, newIds);
+    toast(`Learned. This call now scores ${lastPct}% (was ${pct}%).`);
   }
 
   function reset() {
     if (!window.confirm('Reset all learned weights and the network blocklist?')) return;
-    state = fresh(); bumped = new Set();
+    state = fresh();
     try { localStorage.removeItem(STORE_KEY); } catch (e) {}
     render();
     toast('Network memory reset.');
@@ -489,7 +573,7 @@
   function toast(msg) {
     const t = $('toast');
     t.textContent = msg; t.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
   }
 
   // ---------- Presets ----------
@@ -510,9 +594,10 @@
   function applyPreset(name) {
     const p = PRESETS[name];
     if (!p) return;
-    for (const k of Object.keys(p)) $(k === 'ptype' ? 'ptype' : k).value = p[k];
-    bumped = new Set();
-    render();
+    for (const k of Object.keys(p)) $(k).value = p[k];
+    lastSignKey = '';
+    renderVerdict();
+    if (window.innerWidth < 880) $('verdict').scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
   }
 
   // ---------- Wire up ----------
@@ -524,6 +609,7 @@
   $('btn-legit').addEventListener('click', () => confirm(0));
   $('btn-reset').addEventListener('click', reset);
 
+  buildWeights();
   render();
 })();
 </script>
